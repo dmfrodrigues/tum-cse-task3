@@ -1,3 +1,6 @@
 # CLion
 .idea
 cmake-build-*
+.vscode
+build
+__pycache__
