@@ -51,6 +51,8 @@ class Raft {
     return kvs.open();
   }
 
+  auto join_peer(const SocketAddress &peer) -> void;
+
   auto get(const std::string& key, std::string& result) -> bool {
     return kvs.get(key, result);
   }
@@ -113,8 +115,11 @@ class Raft {
   auto heartbeat(Routing& routing, std::mutex& mtx) -> void;
 
   auto get_dropped_peers(std::vector<std::string>& result) -> void {
-    // TODO(you)
-    // Return the nodes that have dropped back. 
+    result.clear();
+    result.reserve(dropped_peers.size());
+    for(const SocketAddress &peer: dropped_peers){
+      result.push_back(peer.string());
+    }
   }
 
   auto set_leader_addr(const std::string& addr) -> void {
@@ -129,6 +134,8 @@ class Raft {
   auto worker(Routing& routing) -> void;
   // the actual kvs
   KVS kvs;
+
+  std::unordered_set<SocketAddress> peers;
 
   // every peer is initially a follower
   RaftRole role{RaftRole::FOLLOWER};

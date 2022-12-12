@@ -4,6 +4,10 @@
 
 #include "cloud.pb.h"
 
+#include <iostream>
+
+using namespace std;
+
 namespace cloudlab {
 
 P2PHandler::P2PHandler(Routing& routing) : routing{routing} {
@@ -196,6 +200,15 @@ auto P2PHandler::handle_join_cluster(Connection& con,
 
   // TODO(you)
   // Handle join cluster request. Leader might operate differently from followers.
+  
+  auto peer = SocketAddress(msg.address().address());
+  raft->join_peer(peer);
+
+  cout << "[Join] Added " << msg.address().address() << endl;
+
+  response.set_type(cloud::CloudMessage_Type_RESPONSE);
+  response.set_operation(cloud::CloudMessage_Operation_JOIN_CLUSTER);
+  response.set_message("OK");
 
   con.send(response);
 }
@@ -265,10 +278,20 @@ auto P2PHandler::handle_raft_vote(Connection& con,
 auto P2PHandler::handle_raft_dropped_node(Connection& con,
                                            const cloud::CloudMessage& msg)
     -> void {
+
+  cerr << "[Dropped] Starting to process" << endl;
+
   cloud::CloudMessage response{};
 
-  // TODO(you)
-  // Return the address of dropped nodes
+  response.set_type(cloud::CloudMessage_Type_RESPONSE);
+  response.set_operation(cloud::CloudMessage_Operation_RAFT_DROPPED_NODE);
+  vector<string> droppedPeers;
+  raft->get_dropped_peers(droppedPeers);
+  stringstream ss;
+  for(const string &peerAddress: droppedPeers){
+    ss << peerAddress << "\n";
+  }
+  response.set_message(ss.str());
 
   con.send(response);
 }
