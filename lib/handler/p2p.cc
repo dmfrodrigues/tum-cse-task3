@@ -256,10 +256,9 @@ auto P2PHandler::handle_transfer_partition(Connection& con,
 auto P2PHandler::handle_raft_append_entries(Connection& con,
                                            const cloud::CloudMessage& msg)
     -> void {
-  cloud::CloudMessage response{};
+  raft->reset_election_timer();
 
-  // TODO(you)
-  // Do things when receiving heartbeat from the leader.
+  cloud::CloudMessage response{};
 
   con.send(response);
 }

@@ -39,10 +39,20 @@ enum class RaftRole {
 };
 
 class Raft {
+ private:
+  int MIN_ELECTION_TIMEOUT_MS = 1000;
+  int MAX_ELECTION_TIMEOUT_MS = 2000;
+
  public:
-  explicit Raft(const std::string& path = {}, const std::string& addr = {}, bool open = false)
-      : kvs{path, open}, own_addr{addr} {
-    // TODO(you)
+  explicit Raft(const std::string& path = {}, const std::string& addr = {}, bool open = false):
+    kvs{path, open}, own_addr{addr},
+    election_timeout_val(
+      std::chrono::milliseconds(
+        MIN_ELECTION_TIMEOUT_MS +
+        std::rand() % (MAX_ELECTION_TIMEOUT_MS - MIN_ELECTION_TIMEOUT_MS)
+      )
+    )
+  {
   }
 
   auto run(Routing& routing, std::mutex& mtx) -> std::thread;
@@ -102,11 +112,15 @@ class Raft {
 
 
   auto election_timeout() -> bool {
-    // TODO(you)
+    std::lock_guard<std::mutex> lock(timer_mtx);
+    auto now = std::chrono::high_resolution_clock::now();
+    return (election_timer < now);
   }
 
   auto reset_election_timer() -> void {
-    // TODO(you)
+    std::lock_guard<std::mutex> lock(timer_mtx);
+    auto now = std::chrono::high_resolution_clock::now();
+    election_timer = now + election_timeout_val;
   }
 
 
@@ -153,6 +167,7 @@ class Raft {
 
   std::atomic_uint16_t votes_received{0};
   // election timer
+  std::mutex timer_mtx;
   std::chrono::high_resolution_clock::time_point election_timer;
   std::chrono::high_resolution_clock::duration election_timeout_val{};
 };
