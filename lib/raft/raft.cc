@@ -1,5 +1,6 @@
 #include "cloudlab/raft/raft.hh"
 
+using namespace std;
 
 namespace cloudlab {
 
@@ -24,7 +25,14 @@ auto Raft::run(Routing& routing, std::mutex& mtx) -> std::thread {
   // Return a thread that keeps running the heartbeat function.
   // If you have other implementation you can skip this.   
 
-  return {};
+  thread t([this, &routing, &mtx](){
+    while(true){
+      this_thread::sleep_for(chrono::milliseconds(500));
+      heartbeat(routing, mtx);
+    }
+  });
+
+  return t;
 }
 
 
