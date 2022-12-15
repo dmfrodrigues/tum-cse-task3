@@ -40,7 +40,7 @@ auto Raft::heartbeat(Routing& routing, std::mutex& mtx) -> void {
 
   cerr << "[Heartbeat] Broadcasting" << endl;
   for(auto it = peers.begin(); it != peers.end();){
-    const SocketAddress &peer = *it;
+    const SocketAddress peer = *it;
 
     cloud::CloudMessage msg{};
     msg.set_type(cloud::CloudMessage_Type_REQUEST);
