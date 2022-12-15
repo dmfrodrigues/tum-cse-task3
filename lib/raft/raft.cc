@@ -6,6 +6,21 @@ using namespace std;
 namespace cloudlab {
 
 auto Raft::join_peer(const SocketAddress &peer) -> void {
+  if(!leader()) throw logic_error("Only leader can join peers");
+  
+  for(const SocketAddress &p: peers){
+    Connection con{p};
+
+    cloud::CloudMessage message;
+    message.set_type(cloud::CloudMessage_Type_REQUEST);
+    message.set_operation(cloud::CloudMessage_Operation_RAFT_ADD_NODE);
+    message.set_message(peer.string().c_str());
+
+    con.send(message);
+
+    cloud::CloudMessage res;
+    con.receive(res);
+  }
   peers.insert(peer);
 }
 
@@ -42,7 +57,22 @@ auto Raft::heartbeat(Routing& routing, std::mutex& mtx) -> void {
         << "removing peer " << peer.string() << endl;
       dropped_peers.push_back(peer);
       it = peers.erase(it);
+
+      for(const SocketAddress &p: peers){
+        Connection con{p};
+
+        cloud::CloudMessage message;
+        message.set_type(cloud::CloudMessage_Type_REQUEST);
+        message.set_operation(cloud::CloudMessage_Operation_RAFT_REMOVE_NODE);
+        message.set_message(peer.string().c_str());
+
+        con.send(message);
+
+        cloud::CloudMessage res;
+        con.receive(res);
+      }
     }
+
   }
 }
 

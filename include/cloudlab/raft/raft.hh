@@ -144,6 +144,14 @@ class Raft {
     result = leader_addr;
   }
 
+  auto add_node(const SocketAddress &peer) -> void {
+    peers.insert(peer);
+  }
+
+  auto remove_node(const SocketAddress &peer) -> void {
+    peers.erase(peer);
+  }
+
  private:
   auto worker(Routing& routing) -> void;
   // the actual kvs

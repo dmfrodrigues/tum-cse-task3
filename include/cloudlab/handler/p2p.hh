@@ -54,6 +54,8 @@ class P2PHandler : public ServerHandler {
   auto handle_raft_dropped_node(Connection& con, const cloud::CloudMessage& msg) -> void;
   auto handle_raft_get_leader(Connection& con, const cloud::CloudMessage& msg) -> void;
   auto handle_raft_direct_get(Connection& con, const cloud::CloudMessage& msg) -> void;
+  auto handle_raft_add_node(Connection& con, const cloud::CloudMessage& msg) -> void;
+  auto handle_raft_remove_node(Connection& con, const cloud::CloudMessage& msg) -> void;
   // clang-format on
 
   std::unordered_map<uint32_t, std::unique_ptr<KVS>> partitions{};

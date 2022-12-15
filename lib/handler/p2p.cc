@@ -93,6 +93,15 @@ auto P2PHandler::handle_connection(Connection& con) -> void {
       handle_raft_direct_get(con, request);
       break;
     }
+    case cloud::CloudMessage_Operation_RAFT_ADD_NODE: {
+      handle_raft_add_node(con, request);
+      break;
+    }
+    case cloud::CloudMessage_Operation_RAFT_REMOVE_NODE: {
+      handle_raft_remove_node(con, request);
+      break;
+    }
+
     default:
       response.set_type(cloud::CloudMessage_Type_RESPONSE);
       response.set_operation(request.operation());
@@ -317,6 +326,31 @@ auto P2PHandler::handle_raft_direct_get(Connection& con,
 
   con.send(response);
 }
+
+auto P2PHandler::handle_raft_add_node(Connection& con,
+                                           const cloud::CloudMessage& msg)
+    -> void {
+  cloud::CloudMessage response{};
+
+  raft->add_node(SocketAddress(msg.message()));
+
+  response.set_message("OK");
+
+  con.send(response);
+}
+
+auto P2PHandler::handle_raft_remove_node(Connection& con,
+                                           const cloud::CloudMessage& msg)
+    -> void {
+  cloud::CloudMessage response{};
+
+  raft->remove_node(SocketAddress(msg.message()));
+
+  response.set_message("OK");
+
+  con.send(response);
+}
+
 
 
 }  // namespace cloudlab

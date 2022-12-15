@@ -28,6 +28,8 @@ void APIHandler::handle_connection(Connection& con) {
     case cloud::CloudMessage_Operation_JOIN_CLUSTER:
     case cloud::CloudMessage_Operation_RAFT_GET_LEADER:
     case cloud::CloudMessage_Operation_RAFT_DIRECT_GET:
+    case cloud::CloudMessage_Operation_RAFT_ADD_NODE:
+    case cloud::CloudMessage_Operation_RAFT_REMOVE_NODE:
     case cloud::CloudMessage_Operation_RAFT_DROPPED_NODE: {   
       backend.send(request);
       backend.receive(response);
