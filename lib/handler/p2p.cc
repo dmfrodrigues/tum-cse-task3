@@ -332,7 +332,7 @@ auto P2PHandler::handle_raft_add_node(Connection& con,
     -> void {
   cloud::CloudMessage response{};
 
-  raft->add_node(SocketAddress(msg.message()));
+  raft->add_node(msg.message());
 
   response.set_message("OK");
 
@@ -344,7 +344,7 @@ auto P2PHandler::handle_raft_remove_node(Connection& con,
     -> void {
   cloud::CloudMessage response{};
 
-  raft->remove_node(SocketAddress(msg.message()));
+  raft->remove_node(msg.message());
 
   response.set_message("OK");
 
