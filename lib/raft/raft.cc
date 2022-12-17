@@ -56,10 +56,6 @@ auto Raft::perform_election(Routing& routing) -> void {
 }
 
 auto Raft::heartbeat(Routing& routing, std::mutex& mtx) -> void {
-  // TODO(you)
-  // Implement the heartbeat functionality that the leader should broadcast to 
-  // the followers to declare its presence
-
   cerr << "[Heartbeat] Broadcasting" << endl;
   for(auto it = peers.begin(); it != peers.end();){
     const SocketAddress peer = *it;
