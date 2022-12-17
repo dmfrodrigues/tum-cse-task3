@@ -144,11 +144,11 @@ class Raft {
     result = leader_addr;
   }
 
-  auto add_node(const SocketAddress &peer) -> void {
+  auto add_node(const std::string &peer) -> void {
     peers.insert(peer);
   }
 
-  auto remove_node(const SocketAddress &peer) -> void {
+  auto remove_node(const std::string &peer) -> void {
     peers.erase(peer);
   }
 
@@ -157,7 +157,7 @@ class Raft {
   // the actual kvs
   KVS kvs;
 
-  std::unordered_set<SocketAddress> peers;
+  std::unordered_set<std::string> peers;
 
   // every peer is initially a follower
   RaftRole role{RaftRole::FOLLOWER};
