@@ -8,19 +8,41 @@ namespace cloudlab {
 auto Raft::join_peer(const SocketAddress &peer) -> void {
   if(!leader()) throw logic_error("Only leader can join peers");
   
+  // Inform nodes in the system of the entry of peer
   for(const SocketAddress &p: peers){
     Connection con{p};
 
     cloud::CloudMessage message;
     message.set_type(cloud::CloudMessage_Type_REQUEST);
     message.set_operation(cloud::CloudMessage_Operation_RAFT_ADD_NODE);
-    message.set_message(peer.string().c_str());
+    message.set_message(peer.string());
 
     con.send(message);
 
     cloud::CloudMessage res;
     con.receive(res);
   }
+
+  // Inform newly-added peer of the nodes already in the system
+  {
+    Connection con{peer};
+
+    cloud::CloudMessage res;
+
+    cloud::CloudMessage message;
+    message.set_type(cloud::CloudMessage_Type_REQUEST);
+    message.set_operation(cloud::CloudMessage_Operation_RAFT_ADD_NODE);
+    message.set_message(own_addr);
+    con.send(message);
+    con.receive(res);
+
+    for(const SocketAddress &p: peers){
+      message.set_message(p.string());
+      con.send(message);
+      con.receive(res);
+    }
+  }
+
   peers.insert(peer);
 }
 
