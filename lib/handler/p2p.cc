@@ -265,7 +265,7 @@ auto P2PHandler::handle_transfer_partition(Connection& con,
 auto P2PHandler::handle_raft_append_entries(Connection& con,
                                            const cloud::CloudMessage& msg)
     -> void {
-  raft->reset_election_timer();
+  raft->reset_election_timer(msg.address().address());
 
   cloud::CloudMessage response{};
 
@@ -276,10 +276,23 @@ auto P2PHandler::handle_raft_vote(Connection& con,
                                            const cloud::CloudMessage& msg)
     -> void {
   cloud::CloudMessage response{};
+  response.set_type(cloud::CloudMessage_Type_RESPONSE);
+  response.set_operation(cloud::CloudMessage_Operation_RAFT_VOTE);
+  
+  size_t idx = msg.message().find(" ");
+  string termStr = msg.message().substr(0, idx);
+  string candidateStr = msg.message().substr(idx+1);
 
-  // TODO(you)
-  // Decide whether to vote for the sender.
+  uint64_t term = atoll(termStr.c_str());
+  SocketAddress candidate{candidateStr};
 
+  optional<SocketAddress> castedVote = raft->vote(term, candidate);
+  if(castedVote == nullopt){
+    response.set_message("ERROR");
+    con.send(response);
+    return;
+  }
+  response.set_message(castedVote.value().string());
   con.send(response);
 }
 
@@ -309,8 +322,12 @@ auto P2PHandler::handle_raft_get_leader(Connection& con,
     -> void {
   cloud::CloudMessage response{};
 
-  // TODO(you)
-  // Return the address of the current leader
+  response.set_type(cloud::CloudMessage_Type_RESPONSE);
+  response.set_operation(cloud::CloudMessage_Operation_RAFT_GET_LEADER);
+
+  string leaderAddr;
+  raft->get_leader_addr(leaderAddr);
+  response.set_message(leaderAddr);
 
   con.send(response);
 }
@@ -332,7 +349,10 @@ auto P2PHandler::handle_raft_add_node(Connection& con,
     -> void {
   cloud::CloudMessage response{};
 
+  raft->reset_election_timer(msg.address().address());
+
   raft->add_node(msg.message());
+  cerr << "[Node] Added node " << msg.message() << endl;
 
   response.set_message("OK");
 

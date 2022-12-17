@@ -8,6 +8,8 @@
 using namespace cloudlab;
 
 auto main(int argc, char* argv[]) -> int {
+  srand(time(nullptr) ^ getpid());
+
   argh::parser cmdl({"-a", "--api", "-p", "--p2p"});
   cmdl.parse(argc, argv);
 

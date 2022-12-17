@@ -46,7 +46,18 @@ def main() -> None:
             kill_nodes(kvs_list)
             sys.exit(1)
         sleep(2)
+
+        ctl_1 = run_ctl("127.0.0.1:42000", "leader")
+        ctl_2 = run_ctl("127.0.0.1:44000", "leader")
+        ctl_3 = run_ctl("127.0.0.1:46000", "leader")
+        ctl_4 = run_ctl("127.0.0.1:48000", "leader")
         
+        if not (ctl_1 == ctl_2 == ctl_3 == ctl_4):
+            print([ctl_1, ctl_2, ctl_3, ctl_4])
+            kill_nodes(kvs_list)
+            print("Failing pre-conditions")
+            sys.exit(1)
+
         run(["kill", "-9", str(leader.pid)])
         sleep(5)
 
@@ -56,6 +67,7 @@ def main() -> None:
         ctl_4 = run_ctl("127.0.0.1:48000", "leader")
 
         if ctl_1 == "127.0.0.1:41000" or (not ctl_1 == ctl_2 == ctl_3 == ctl_4):
+            print([ctl_1, ctl_2, ctl_3, ctl_4])
             kill_nodes(kvs_list)
             print("Failing first subtest")
             sys.exit(1)

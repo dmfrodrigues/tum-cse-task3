@@ -15,6 +15,7 @@ auto Raft::join_peer(const SocketAddress &peer) -> void {
     cloud::CloudMessage message;
     message.set_type(cloud::CloudMessage_Type_REQUEST);
     message.set_operation(cloud::CloudMessage_Operation_RAFT_ADD_NODE);
+    message.mutable_address()->set_address(own_addr);
     message.set_message(peer.string());
 
     con.send(message);
@@ -32,6 +33,7 @@ auto Raft::join_peer(const SocketAddress &peer) -> void {
     cloud::CloudMessage message;
     message.set_type(cloud::CloudMessage_Type_REQUEST);
     message.set_operation(cloud::CloudMessage_Operation_RAFT_ADD_NODE);
+    message.mutable_address()->set_address(own_addr);
     message.set_message(own_addr);
     con.send(message);
     con.receive(res);
@@ -43,6 +45,7 @@ auto Raft::join_peer(const SocketAddress &peer) -> void {
     }
   }
 
+  cerr << "[Raft] Inserting " << peer.string() << " to peers set" << endl;
   peers.insert(peer.string());
 }
 
@@ -51,8 +54,49 @@ auto Raft::put(const std::string& key, const std::string& value) -> bool {
 }
 
 auto Raft::perform_election(Routing& routing) -> void {
-  // TODO(you)
-  // Upon election timeout, the follower changes to candidate and starts election  
+  set_candidate();
+  size_t numberNodes = peers.size() + 1;
+  current_term++;
+  voted_for = SocketAddress{own_addr};
+
+  votes_received = 1;
+
+  cloud::CloudMessage msg{};
+  msg.set_type(cloud::CloudMessage_Type_REQUEST);
+  msg.set_operation(cloud::CloudMessage_Operation_RAFT_VOTE);
+  msg.set_message(to_string(current_term) + " " + own_addr);
+
+  cloud::CloudMessage response{};
+  for(const string &peer: peers){
+    if(votes_received >= numberNodes/2 + 1){
+      break;
+    }
+    Connection con{peer};
+    con.send(msg);
+    con.receive(response);
+    if(response.message() == own_addr)
+      ++votes_received;
+  }
+  if(votes_received >= numberNodes/2 + 1){
+    set_leader();
+    cerr << "[Leader] New leader elected" << endl;
+  } else {
+    cerr << "[Candidate] Election failed" << endl;
+  }
+}
+
+auto Raft::vote(uint64_t term, SocketAddress candidate) -> optional<SocketAddress> {
+  if(term < current_term){
+    return nullopt;
+  } else if(term == current_term){
+    if(voted_for == nullopt)
+      voted_for = candidate;
+    return voted_for;
+  } else { // term > current_term
+    reset_election_timer(candidate.string());
+    current_term = term;
+    return voted_for = candidate;
+  }
 }
 
 auto Raft::heartbeat(Routing& routing, std::mutex& mtx) -> void {
@@ -63,6 +107,8 @@ auto Raft::heartbeat(Routing& routing, std::mutex& mtx) -> void {
     cloud::CloudMessage msg{};
     msg.set_type(cloud::CloudMessage_Type_REQUEST);
     msg.set_operation(cloud::CloudMessage_Operation_RAFT_APPEND_ENTRIES);
+    auto addr = msg.mutable_address();
+    addr->set_address(own_addr);
     try {
       Connection con{peer};
       con.send(msg);
@@ -107,11 +153,15 @@ auto Raft::run(Routing& routing, std::mutex& mtx) -> std::thread {
       } else if(follower()){
         std::chrono::high_resolution_clock::time_point election_timer_local;
         {
-          lock_guard<mutex> lock(timer_mtx);
+          lock_guard<mutex> lock(mtx);
           election_timer_local = election_timer;
         }
-        if(election_timer_local < std::chrono::high_resolution_clock::now()){
-          peers.erase(leader_addr);
+        if(
+          peers.size() > 0 &&
+          election_timer_local < std::chrono::high_resolution_clock::now()
+        ){
+          cerr << "[Candidate] Leader suspected to be dead, starting election" << endl;
+          remove_node(leader_addr);
           perform_election(routing);
         }
       }

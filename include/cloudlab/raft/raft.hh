@@ -53,6 +53,9 @@ class Raft {
       )
     )
   {
+    std::cerr
+      << "[Raft] Election timeout is "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(election_timeout_val).count() << std::endl;
   }
 
   auto run(Routing& routing, std::mutex& mtx) -> std::thread;
@@ -92,6 +95,7 @@ class Raft {
 
   auto set_leader() -> void {
     role = RaftRole::LEADER;
+    leader_addr = own_addr;
   }
 
   auto set_candidate() -> void {
@@ -117,14 +121,21 @@ class Raft {
     return (election_timer < now);
   }
 
-  auto reset_election_timer() -> void {
+  auto reset_election_timer(std::string leader) -> void {
     std::lock_guard<std::mutex> lock(timer_mtx);
     auto now = std::chrono::high_resolution_clock::now();
     election_timer = now + election_timeout_val;
+    if(leader_addr != leader){
+      std::cerr << "[Follower] Updating leader to " << leader << std::endl;
+      leader_addr = leader;
+      peers.insert(leader);
+    }
   }
 
 
   auto perform_election(Routing& routing) -> void;
+
+  auto vote(uint64_t term, SocketAddress candidate) -> std::optional<SocketAddress>;
 
   auto heartbeat(Routing& routing, std::mutex& mtx) -> void;
 
