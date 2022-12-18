@@ -126,6 +126,10 @@ class Raft {
     auto now = std::chrono::high_resolution_clock::now();
     election_timer = now + election_timeout_val;
     if(leader_addr != leader){
+      if(leader_addr == own_addr){
+        std::cerr << "[Leader] Dethroned by " << leader << std::endl;
+        set_follower();
+      }
       std::cerr << "[Follower] Updating leader to " << leader << std::endl;
       leader_addr = leader;
       peers.insert(leader);

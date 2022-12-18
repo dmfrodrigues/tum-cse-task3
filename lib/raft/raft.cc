@@ -55,33 +55,50 @@ auto Raft::put(const std::string& key, const std::string& value) -> bool {
 
 auto Raft::perform_election(Routing& routing) -> void {
   set_candidate();
-  size_t numberNodes = peers.size() + 1;
-  current_term++;
-  voted_for = SocketAddress{own_addr};
+  leader_addr = "";
 
-  votes_received = 1;
-
-  cloud::CloudMessage msg{};
-  msg.set_type(cloud::CloudMessage_Type_REQUEST);
-  msg.set_operation(cloud::CloudMessage_Operation_RAFT_VOTE);
-  msg.set_message(to_string(current_term) + " " + own_addr);
-
-  cloud::CloudMessage response{};
-  for(const string &peer: peers){
-    if(votes_received >= numberNodes/2 + 1){
-      break;
+  const size_t numberNodes = peers.size() + 1;
+  const size_t votesThreshold = numberNodes/2 + 1;
+  
+  while(true){
+    if(leader_addr != ""){
+      cerr << "[Candidate] New leader that not me elected, stepping down" << endl;
+      set_follower();
+      return;
     }
-    Connection con{peer};
-    con.send(msg);
-    con.receive(response);
-    if(response.message() == own_addr)
-      ++votes_received;
-  }
-  if(votes_received >= numberNodes/2 + 1){
-    set_leader();
-    cerr << "[Leader] New leader elected" << endl;
-  } else {
-    cerr << "[Candidate] Election failed" << endl;
+
+    current_term++;
+    voted_for = SocketAddress{own_addr};
+
+    votes_received = 1;
+
+    cloud::CloudMessage msg{};
+    msg.set_type(cloud::CloudMessage_Type_REQUEST);
+    msg.set_operation(cloud::CloudMessage_Operation_RAFT_VOTE);
+    msg.set_message(to_string(current_term) + " " + own_addr);
+
+    cloud::CloudMessage response{};
+
+    for(const string &peer: peers){
+      if(votes_received >= votesThreshold)
+        break;
+
+      Connection con{peer};
+      con.send(msg);
+      con.receive(response);
+      if(response.message() == own_addr){
+        ++votes_received;
+        cerr << "[Candidate] term=" << current_term << ", got 1 more vote" << endl;
+      }
+    }
+    if(votes_received >= votesThreshold){
+      set_leader();
+      leader_addr = own_addr;
+      cerr << "[Leader] New leader elected" << endl;
+      return;
+    } else {
+      cerr << "[Candidate] Election failed" << endl;
+    }
   }
 }
 
@@ -89,12 +106,15 @@ auto Raft::vote(uint64_t term, SocketAddress candidate) -> optional<SocketAddres
   if(term < current_term){
     return nullopt;
   } else if(term == current_term){
-    if(voted_for == nullopt)
+    if(voted_for == nullopt){
       voted_for = candidate;
+      cerr << "[Follower] term=" << term << ", voted for " << candidate.string() << endl;
+    }
     return voted_for;
   } else { // term > current_term
     reset_election_timer(candidate.string());
     current_term = term;
+    cerr << "[Follower] term=" << term << ", voted for " << candidate.string() << endl;
     return voted_for = candidate;
   }
 }
