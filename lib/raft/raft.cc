@@ -50,7 +50,19 @@ auto Raft::join_peer(const SocketAddress &peer) -> void {
 }
 
 auto Raft::put(const std::string& key, const std::string& value) -> bool {
-  // TODO(you)
+  cloud::CloudMessage msg;
+  msg.set_type(cloud::CloudMessage_Type_REQUEST);
+  msg.set_operation(cloud::CloudMessage_Operation_PUT);
+  auto tmp = msg.add_kvp();
+  tmp->set_key(key);
+  tmp->set_value(value);
+  for(const string &peer: peers){
+    Connection con{peer};
+    con.send(msg);
+    cloud::CloudMessage response;
+    con.receive(response);
+  }
+  return true;
 }
 
 auto Raft::perform_election(Routing& routing) -> void {

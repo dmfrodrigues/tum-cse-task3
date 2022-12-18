@@ -196,11 +196,28 @@ auto P2PHandler::handle_key_operation_leader(Connection& con, const cloud::Cloud
     -> void {
   cloud::CloudMessage response{};
 
-  // TODO(you)
-  // This function should be similar to the RouterHandler::handle_key_operation()
-  // in task 2.
+  switch(msg.operation()){
+    case cloud::CloudMessage_Operation_GET:
+      handle_get(con, msg);
+      return;
+    case cloud::CloudMessage_Operation_PUT:
+      for (const auto& kvp : msg.kvp()) {
+        auto* tmp = response.add_kvp();
+        tmp->set_key(kvp.key());
+        tmp->set_value("OK");
 
-  con.send(response);
+        auto partition_id = routing.get_partition(kvp.key());
+        assert(partitions.at(partition_id)->open());
+        assert(partitions.at(partition_id)->put(kvp.key(), kvp.value()));
+
+        assert(raft->put(kvp.key(), kvp.value()));
+      }
+      response.set_message("OK");
+      con.send(response);
+      return;
+    case cloud::CloudMessage_Operation_DELETE:
+      break;
+  }
 }
 
 auto P2PHandler::handle_join_cluster(Connection& con,
@@ -214,6 +231,30 @@ auto P2PHandler::handle_join_cluster(Connection& con,
   raft->join_peer(peer);
 
   cout << "[Join] Added " << msg.address().address() << endl;
+
+  // Give new peer all the KVS
+  {
+    Connection connectionToPeer{peer};
+
+    cloud::CloudMessage message;
+    message.set_type(cloud::CloudMessage_Type_REQUEST);
+    message.set_operation(cloud::CloudMessage_Operation_PUT);
+    for(const auto &p: partitions){
+      const auto &partition = p.second;
+      vector<pair<string,string>> buffer;
+      partition->get_all(buffer);
+      for(const auto &kvp: buffer){
+        auto *tmp = message.add_kvp();
+        tmp->set_key(kvp.first);
+        tmp->set_value(kvp.second);
+      }
+    }
+
+    connectionToPeer.send(message);
+    cloud::CloudMessage response;
+    connectionToPeer.receive(response);
+    
+  }
 
   response.set_type(cloud::CloudMessage_Type_RESPONSE);
   response.set_operation(cloud::CloudMessage_Operation_JOIN_CLUSTER);
@@ -335,13 +376,8 @@ auto P2PHandler::handle_raft_get_leader(Connection& con,
 auto P2PHandler::handle_raft_direct_get(Connection& con,
                                            const cloud::CloudMessage& msg)
     -> void {
-  cloud::CloudMessage response{};
+  handle_get(con, msg);
 
-  // TODO(you)
-  // Return the get request from clt directly, regardless if you are leader
-  // or not. 
-
-  con.send(response);
 }
 
 auto P2PHandler::handle_raft_add_node(Connection& con,

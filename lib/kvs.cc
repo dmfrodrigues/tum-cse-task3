@@ -1,47 +1,61 @@
 #include "cloudlab/kvs.hh"
 
-#include "fmt/core.h"
 #include "rocksdb/db.h"
 
-#include <algorithm>
-#include <limits>
-#include <random>
+#include <iostream>
+using namespace std;
 
 namespace cloudlab {
 
 auto KVS::open() -> bool {
-  // only open db if it was not opened yet
   if (!db) {
-    // TODO(you)
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    return rocksdb::DB::Open(options, path.string(), &db).ok();
   }
 
   return true;
 }
 
 auto KVS::get(const std::string& key, std::string& result) -> bool {
-  // TODO(you)
-  return {};
+  std::lock_guard<std::mutex> lck(mtx);
+  if (!kvs_open) kvs_open = open();
+  return db && db->Get(rocksdb::ReadOptions(), key, &result).ok();
 }
 
 auto KVS::get_all(std::vector<std::pair<std::string, std::string>>& buffer)
     -> bool {
-  // TODO(you)
-  return {};
+  std::lock_guard<std::mutex> lck(mtx);
+  if (!kvs_open){ kvs_open = open(); }
+  auto* it = db->NewIterator(rocksdb::ReadOptions());
+  it->SeekToFirst();
+
+  while (it->Valid()) {
+    string key  (it->key  ().data(), it->key  ().size());
+    string value(it->value().data(), it->value().size());
+    
+    buffer.emplace_back(key, value);
+    it->Next();
+  }
+
+  return true;
 }
 
 auto KVS::put(const std::string& key, const std::string& value) -> bool {
-  // TODO(you)
-  return {};
+  std::lock_guard<std::mutex> lck(mtx);
+  if (!kvs_open) kvs_open = open();
+  return db && db->Put(rocksdb::WriteOptions(), key, value).ok();
 }
 
 auto KVS::remove(const std::string& key) -> bool {
-  // TODO(you)
-  return {};
+  std::lock_guard<std::mutex> lck(mtx);
+  if (!kvs_open) kvs_open = open();
+  return db && db->Delete(rocksdb::WriteOptions(), key).ok();
 }
 
 auto KVS::clear() -> bool {
-  // TODO(you)
-  return {};
+  std::lock_guard<std::mutex> lck(mtx);
+  return rocksdb::DestroyDB(path.string(), {}).ok();
 }
 
 auto KVS::clear_partition(size_t id) -> bool {

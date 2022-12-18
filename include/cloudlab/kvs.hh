@@ -109,6 +109,8 @@ class KVS {
   std::vector<rocksdb::ColumnFamilyHandle*> partition_handles;
   std::set<size_t> partition_exists;
   std::mutex mtx;
+
+  bool kvs_open = false;
 };
 
 }  // namespace cloudlab
