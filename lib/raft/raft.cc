@@ -71,6 +71,8 @@ auto Raft::perform_election(Routing& routing) -> void {
 
   const size_t numberNodes = peers.size() + 1;
   const size_t votesThreshold = numberNodes/2 + 1;
+
+  cerr << "[Candidate] Starting election" << endl;
   
   while(true){
     if(leader_addr != ""){
@@ -106,7 +108,7 @@ auto Raft::perform_election(Routing& routing) -> void {
     if(votes_received >= votesThreshold){
       set_leader();
       leader_addr = own_addr;
-      cerr << "[Leader] New leader elected" << endl;
+      cerr << "[Leader] New leader elected, finishing election" << endl;
       return;
     } else {
       cerr << "[Candidate] Election failed" << endl;
@@ -180,8 +182,8 @@ auto Raft::run(Routing& routing, std::mutex& mtx) -> std::thread {
   return thread([this, &routing, &mtx](){
     while(true){
       if(leader()){
-        this_thread::sleep_for(chrono::milliseconds(500));
         heartbeat(routing, mtx);
+        this_thread::sleep_for(chrono::milliseconds(500));
       } else if(follower()){
         std::chrono::high_resolution_clock::time_point election_timer_local;
         {

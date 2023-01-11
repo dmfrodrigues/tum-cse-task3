@@ -175,7 +175,7 @@ class Raft {
   std::unordered_set<std::string> peers;
 
   // every peer is initially a follower
-  RaftRole role{RaftRole::FOLLOWER};
+  std::atomic<RaftRole> role{RaftRole::FOLLOWER};
 
   std::string own_addr{""};
   std::string leader_addr{""};
