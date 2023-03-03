@@ -1,5 +1,7 @@
 # Task 3 - Replicated key-value store (KVS)
 
+[![GitHub Classroom Workflow](https://github.com/dmfrodrigues/tum-cse-task3/actions/workflows/classroom.yml/badge.svg)](https://github.com/dmfrodrigues/tum-cse-task3/actions/workflows/classroom.yml)
+
 In this task, you will extend the single-node key-value store (KVS) and replicate the KVS to multiple servers. This will allow us to have a fault-tolerant KVS that continues to operate even if some servers crash or the network fails.
 
 ## The Raft algorithm
